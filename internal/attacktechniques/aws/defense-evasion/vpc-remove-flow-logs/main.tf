@@ -33,48 +33,41 @@ resource "aws_cloudwatch_log_group" "logs" {
   name = "/stratus-red-team/vpc-flow-logs"
 }
 
+data "aws_iam_policy_document" "assume-role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type = "Service"
+      identifies = "vpc-flow-logs.amazonaws.com"
+    }
+    effect = "Allow"
+  }
+}
+
 resource "aws_iam_role" "role" {
   name = "example"
-
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "",
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "vpc-flow-logs.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
+  assume_role_policy = data.aws_iam_policy_document.assume-role.json
 }
-EOF
+
+data "aws_iam_policy_document" "allow-writing-to-cloudwatch" {
+  statement {
+    actions = [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
+    ]
+    effect = "Allow"
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_role_policy" "example" {
   name = "allow-writing-to-cloudwatch"
   role = aws_iam_role.role.id
 
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents",
-        "logs:DescribeLogGroups",
-        "logs:DescribeLogStreams"
-      ],
-      "Effect": "Allow",
-      "Resource": "*"
-    }
-  ]
-}
-EOF
+  policy = data.aws_iam_policy_document.allow-writing-to-cloudwatch.json
 }
 
 output "vpc_id" {

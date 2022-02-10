@@ -18,24 +18,20 @@ provider "aws" {
   }
 }
 
+data "aws_iam_policy_document" "assume-role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type = "Service"
+      identifies = "lambda.amazonaws.com"
+    }
+    effect = "Allow"
+  }
+}
+
 resource "aws_iam_role" "lambda" {
   name = "lambda-function-role-stratus-red-team"
-
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": "lambda.amazonaws.com"
-      },
-      "Effect": "Allow",
-      "Sid": ""
-    }
-  ]
-}
-EOF
+  assume_role_policy = data.aws_iam_policy_document.assume-role.json
 }
 
 resource "random_string" "suffix" {

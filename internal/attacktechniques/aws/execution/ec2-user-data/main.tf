@@ -55,30 +55,29 @@ resource "aws_network_interface" "iface" {
   subnet_id   = module.vpc.private_subnets[0]
   private_ips = ["10.0.1.10"]
 }
+
+data "aws_iam_policy_document" "assume-role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type = "Service"
+      identifies = "ec2.amazonaws.com"
+    }
+    effect = "Allow"
+  }
+}
+
 resource "aws_iam_role" "instance-role" {
   name = "stratus-ec2-privilege-escalation-instance-role"
   path = "/"
+  assume_role_policy = data.aws_iam_policy_document.assume-role.json
+}
 
-  assume_role_policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Action": "sts:AssumeRole",
-            "Principal": {
-               "Service": "ec2.amazonaws.com"
-            },
-            "Effect": "Allow",
-            "Sid": ""
-        }
-    ]
-}
-EOF
-}
 resource "aws_iam_role_policy_attachment" "rolepolicy" {
   role       = aws_iam_role.instance-role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
+
 resource "aws_iam_instance_profile" "instance" {
   name = "stratus-ec2-privilege-escalation-instance"
   role = aws_iam_role.instance-role.name

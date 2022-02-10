@@ -51,45 +51,41 @@ data "aws_ami" "amazon-2" {
   owners = ["amazon"]
 }
 
+data "aws_iam_policy_document" "assume-role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type = "Service"
+      identifies = "ec2.amazonaws.com"
+    }
+    effect = "Allow"
+  }
+}
+
+data "aws_iam_policy_document" "instance-role" {
+  statement {
+    actions = ["ec2:Describe*"]
+    resources = ["*"]
+    effect = "Allow"
+  }
+}
+
 resource "aws_network_interface" "iface" {
   subnet_id   = module.vpc.private_subnets[0]
   private_ips = ["10.0.1.10"]
 }
+
 resource "aws_iam_role" "instance-role" {
   name = "stratus-ec2-credentials-instance-role"
   path = "/"
 
-  assume_role_policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Action": "sts:AssumeRole",
-            "Principal": {
-               "Service": "ec2.amazonaws.com"
-            },
-            "Effect": "Allow",
-            "Sid": ""
-        }
-    ]
-}
-EOF
+  assume_role_policy = data.aws_iam_policy_document.assume-role.json
   inline_policy {
-    name   = "inline"
-    policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Action": "ec2:Describe*",
-            "Resource": "*",
-            "Effect": "Allow"
-        }
-    ]
-}
-EOF
+    name = "inline"
+    policy = data.aws_iam_policy_document.instance-role.json
   }
 }
+
 resource "aws_iam_role_policy_attachment" "rolepolicy" {
   role       = aws_iam_role.instance-role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
